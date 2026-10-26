@@ -1,7 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Lese lokale API-Keys aus der local.properties (wird von Git ignoriert)
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID", "")
+    .trim()
+    .removeSurrounding("\"")
+val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY", "")
+    .trim()
+    .removeSurrounding("\"")
 
 android {
     namespace = "com.example.guessthesong"
@@ -15,6 +32,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {

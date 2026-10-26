@@ -24,25 +24,21 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val LOCAL_START_URL = "file:///android_asset/index.html"
         private const val REDIRECT_URI_PREFIX = "https://guessthesong.local"
-
-        // Reine Platzhalter-Strings für die API-Keys (hier später manuell eintragen)
-        private const val SPOTIFY_CLIENT_ID = "HIER_SPOTIFY_KEY_EINTRAGEN"
-        private const val GEMINI_API_KEY = "HIER_GEMINI_KEY_EINTRAGEN"
     }
 
     /**
      * JavascriptInterface, über das die JavaScript-Dateien (spotify.js, ki-tipps.js)
-     * sicher auf die hinterlegten API-Keys zugreifen können.
+     * sicher auf die aus local.properties generierten BuildConfig-Keys zugreifen können.
      */
     inner class WebAppInterface {
         @JavascriptInterface
         fun getSpotifyClientId(): String {
-            return SPOTIFY_CLIENT_ID
+            return BuildConfig.SPOTIFY_CLIENT_ID
         }
 
         @JavascriptInterface
         fun getGeminiApiKey(): String {
-            return GEMINI_API_KEY
+            return BuildConfig.GEMINI_API_KEY
         }
     }
 
