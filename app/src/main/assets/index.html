@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Quiz</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>Guess the Song!</h1>
+
+    <div id="start-screen">
+        
+       <div class="left-side-column">
+            
+            <div class="settings-panel playback-panel">
+                <h2>Wiedergabe</h2>
+                
+                <div class="playback-options">
+                    <label><input type="radio" name="start-mode" value="random" checked> Zufällig (wie bisher)</label>
+                    <label><input type="radio" name="start-mode" value="start"> Von Beginn an</label>
+                </div>
+            </div>
+
+            <div class="settings-panel duration-panel">
+                <h2 style="margin-bottom: 15px;">Dauer</h2>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <label style="font-size: 1.05em; color: #ddd;">Länge des Songausschnitts:</label>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                        <input type="number" id="play-duration" min="1" placeholder="z.B. 15" style="width: 80px; padding: 8px; background: #333; border: 1px solid #555; color: white; border-radius: 5px; text-align: center;">
+                        <span style="color: #ddd;">Sek.</span>
+                    </div>
+                    <span style="font-size: 0.8em; color: #888; margin-top: 5px;">(Leer lassen = bis zum Ende)</span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="settings-panel center-panel">
+            <h2>Einstellungen</h2>
+            
+            <div class="filter-group">
+                <label>Jahre (Slider):</label>
+                <div class="range-slider">
+                    <input type="range" id="year-min" min="1940" max="2030" value="1940">
+                    <input type="range" id="year-max" min="1940" max="2030" value="2030">
+                    <div class="slider-track"></div>
+                    <div class="slider-range" id="slider-range"></div>
+                </div>
+                <div class="slider-values">
+                    <span id="year-min-val">1940</span> - <span id="year-max-val">2030</span>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Jahrzehnte:</label>
+                <div id="decade-filters" class="checkbox-group">
+                    <label><input type="checkbox" value="0" checked onchange="updateFromCheckbox()"> &lt;1970</label>
+                    <label><input type="checkbox" value="1" checked onchange="updateFromCheckbox()"> 1970er</label>
+                    <label><input type="checkbox" value="2" checked onchange="updateFromCheckbox()"> 1980er</label>
+                    <label><input type="checkbox" value="3" checked onchange="updateFromCheckbox()"> 1990er</label>
+                    <label><input type="checkbox" value="4" checked onchange="updateFromCheckbox()"> 2000er</label>
+                    <label><input type="checkbox" value="5" checked onchange="updateFromCheckbox()"> 2010er</label>
+                    <label><input type="checkbox" value="6" checked onchange="updateFromCheckbox()"> 2020er</label>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div id="genre-toggle-header" onclick="toggleGenreAccordion()" class="genre-accordion-header">
+                    <div>
+                        <span style="font-weight: bold; color: #ddd;">Genres</span>
+                        <span id="genre-selected-badge" style="font-size: 0.85em; color: #0088ff; margin-left: 8px; display: none;"></span>
+                    </div>
+                    <span id="genre-toggle-icon" class="genre-toggle-arrow">▶</span>
+                </div>
+                <div id="genre-filters-wrapper" class="genre-accordion-content hidden">
+                    <div id="genre-filters" class="checkbox-group"></div>
+                </div>
+            </div>
+
+            <button id="apply-filters-btn" onclick="applyFiltersAndStart()" disabled style="margin-bottom: 10px; margin-top: 10px;">Lade Songs...</button>
+            <button onclick="showSongList()" style="background-color: #17a2b8; width: 100%; margin-bottom: 10px;">Alle Songs anzeigen 📋</button>
+            <button id="start-lyrics-btn" onclick="startLyricsMode()" style="background: linear-gradient(135deg, #9c27b0, #673ab7); width: 100%; font-size: 1.1em; font-weight: bold; border-radius: 5px; padding: 12px; box-shadow: 0 4px 10px rgba(156, 39, 176, 0.4);">🎤 Lyrics Modus spielen</button>
+        </div>
+
+        <div class="right-side-column">
+            
+            <div class="settings-panel pop-panel">
+                <h2>Popularität der Songs</h2>
+                <div class="pop-sliders-container">
+                    <div class="vertical-slider-box" id="pop-abs-container" onclick="setPopFilterMode('absolute')">
+                        <label>Absolut</label>
+                        <div class="vertical-range-wrapper range-slider">
+                            <input type="range" id="pop-abs-min" min="1" max="100" value="1">
+                            <input type="range" id="pop-abs-max" min="1" max="100" value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-range" id="slider-range-abs"></div>
+                        </div>
+                        <div class="slider-values">
+                            <span id="pop-abs-min-val">1</span> - <span id="pop-abs-max-val">100</span>
+                        </div>
+                    </div>
+
+                    <div class="vertical-slider-box dimmed" id="pop-rel-container" onclick="setPopFilterMode('relative')">
+                        <label>Relativ (%)</label>
+                        <div class="vertical-range-wrapper range-slider">
+                            <input type="range" id="pop-rel-min" min="0" max="100" value="0">
+                            <input type="range" id="pop-rel-max" min="0" max="100" value="100">
+                            <div class="slider-track"></div>
+                            <div class="slider-range" id="slider-range-rel"></div>
+                        </div>
+                        <div class="slider-values">
+                            <span id="pop-rel-min-val">0%</span> - <span id="pop-rel-max-val">100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-panel radar-panel">
+                <h2>Jahrzehnt-Verteilung</h2>
+                <div class="radar-container">
+                    <svg id="radar-svg" viewBox="0 0 400 400" style="width: 100%; max-width: 350px; overflow: visible;"></svg>                    
+                    <p id="radar-warning" class="hidden"></p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- LYRICS MODE SCREEN -->
+    <div id="lyrics-mode-screen" class="hidden">
+        <button onclick="leaveLyricsMode()" style="background-color: #6c757d; width: fit-content; padding: 6px 14px; font-size: 0.9em; cursor: pointer; border-radius: 5px; color: white; border: none; margin-bottom: 15px;">🏠 Menü</button>
+        
+        <h2 style="margin-top: 0; color: #ba68c8;">🎤 Lyrics Quiz</h2>
+        <p id="lyrics-status" style="margin-bottom: 15px; font-size: 1.1em; color: #ddd;">Errate den Song anhand der Lyrics!</p>
+
+        <!-- Lyrics Container / Anstelle des GIF Vorhangs -->
+        <div id="lyrics-display-wrapper">
+            <!-- Steuerung oben: Zeile davor / Block davor -->
+            <div class="lyrics-expand-bar top-bar">
+                <button id="lyrics-expand-prev-block" onclick="expandLyricsPrevBlock()" class="lyrics-tool-btn" title="Vorherigen Block / Strophe einblenden">⬆️ + Block davor</button>
+                <button id="lyrics-expand-prev-line" onclick="expandLyricsPrevLine()" class="lyrics-tool-btn" title="Vorherige Zeile einblenden">🔼 + Zeile davor</button>
+                <span id="lyrics-lines-counter" class="lyrics-counter-badge">-- Zeilen</span>
+                <button id="lyrics-btn-toggle-tags" onclick="toggleLyricsTags()" class="lyrics-tool-btn tag-toggle-btn">🏷️ Tags anzeigen</button>
+            </div>
+
+            <div id="lyrics-display-content">
+                <!-- Dynamisch generierte Lyrics-Zeilen -->
+            </div>
+
+            <!-- Steuerung unten: Zeile danach / Block danach -->
+            <div class="lyrics-expand-bar bottom-bar">
+                <button id="lyrics-expand-next-line" onclick="expandLyricsNextLine()" class="lyrics-tool-btn" title="Nächste Zeile einblenden">🔽 + Zeile danach</button>
+                <button id="lyrics-expand-next-block" onclick="expandLyricsNextBlock()" class="lyrics-tool-btn" title="Nächsten Block / Strophe einblenden">⬇️ + Block danach</button>
+            </div>
+        </div>
+
+        <!-- Auflöse-Bereich (Cover + Songdaten) -->
+        <div id="lyrics-solution-box" class="hidden">
+            <img id="lyrics-cover-art" src="" alt="Album Cover">
+            <div id="lyrics-solution-info"></div>
+        </div>
+
+        <button id="lyrics-next-btn" onclick="nextLyricsRound()" class="hidden" style="margin: 20px auto; background-color: #0088ff; font-size: 18px; padding: 12px 25px; border-radius: 5px;">Nächste Runde ⏩</button>
+
+        <!-- Rate-Bereich -->
+        <div id="lyrics-guess-area" style="margin-top: 20px;">
+            <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                <input type="text" id="lyrics-guess-title" placeholder="Titel raten">
+                <input type="text" id="lyrics-guess-artist" placeholder="Interpret raten">
+            </div>
+
+            <p id="lyrics-tipp-display-interpret" style="color: #ffc107; font-family: monospace; font-size: 1.2em; margin: 5px 0; min-height: 20px;"></p>
+            <p id="lyrics-tipp-display-titel" style="color: #ffc107; font-family: monospace; font-size: 1.2em; margin: 5px 0; min-height: 20px;"></p>
+
+            <div style="margin-bottom: 12px;">
+                <button onclick="checkLyricsAnswer()" style="background-color: #ff0055; margin-right: 5px;">Raten</button>
+                <button onclick="revealLyrics(true)" style="background-color: #6c757d;">Auflösen</button>
+            </div>
+
+            <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                <button onclick="zeigeLyricsBuchstabe('interpret')" style="background-color: #ffc107; color: black;">🔤 Interpret-Tipp</button>
+                <button onclick="zeigeLyricsBuchstabe('titel')" style="background-color: #ffc107; color: black;">🔤 Titel-Tipp</button>
+                <button id="lyrics-btn-instrumental" onclick="starteLyricsInstrumentalTipp()" style="background-color: #9c27b0; color: white;">🎷 Instrumental-Tipp</button>
+            </div>
+            <p id="lyrics-instrumental-info" style="font-size: 0.9em; color: #ce93d8; margin: 6px 0 0 0; min-height: 18px;"></p>
+        </div>
+    </div>
+
+    <div id="song-list-screen" class="hidden">
+        <button onclick="goHome()" style="background-color: #6c757d; margin-bottom: 15px;">🏠 Zurück</button>
+        <h2>Bibliothek</h2>
+        <input type="text" id="song-search" placeholder="Suche nach Titel, Interpret, Album..." oninput="filterSongList()">
+        <div style="overflow-x: auto; max-height: 60vh; border: 1px solid #444;">
+            <table id="library-table">
+                <thead>
+                    <tr>
+                        <th>Cover</th>
+                        <th onclick="sortSongs('title')">Titel ↕️</th>
+                        <th onclick="sortSongs('artist')">Interpret ↕️</th>
+                        <th onclick="sortSongs('album')">Album ↕️</th>
+                        <th onclick="sortSongs('year')">Jahr ↕️</th>
+                        <th onclick="sortSongs('genre')">Genre ↕️</th>
+                    </tr>
+                </thead>
+                <tbody id="library-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="player-container" class="hidden">
+        <img id="cover-art" src="" alt="Album Cover" class="hidden">
+        <div id="curtain">
+            <img id="curtain-gif" src="" alt="Animation">
+            <span id="curtain-text">🔊 Hör gut zu...</span>
+        </div>
+    </div>
+
+    <div id="game-controls" class="hidden">
+        <button id="home-btn" onclick="goHome()" style="background-color: #6c757d; width: fit-content; padding: 5px 10px; font-size: 0.8em; cursor: pointer; border-radius: 5px; color: white; border: none; position: absolute; top: 10px; left: 10px;">🏠 Home</button>        
+        <p id="status">Klicke Start um zu beginnen</p>
+        <button id="start-btn" onclick="startGame()">Runde Starten</button>
+        
+        <div id="guess-area" class="hidden">
+            
+            <div id="progress-container" class="hidden" style="width: 100%; max-width: 400px; height: 12px; background: #333; border-radius: 6px; margin: 0 auto 15px auto; overflow: hidden; border: 1px solid #555;">
+                <div id="progress-bar" style="width: 100%; height: 100%; background: #0088ff;"></div>
+            </div>
+
+            <input type="text" id="guess-title" placeholder="Titel">
+            <input type="text" id="guess-artist" placeholder="Interpret">
+
+            <p id="tipp-display-interpret" style="color: #ffc107; font-family: monospace; font-size: 1.2em; margin: 5px 0; min-height: 20px;"></p>
+            <p id="tipp-display-titel" style="color: #ffc107; font-family: monospace; font-size: 1.2em; margin: 5px 0; min-height: 20px;"></p>            
+            
+            <button onclick="checkAnswer()">Raten</button>
+            <button onclick="reveal()">Auflösen</button>
+            <button id="admin-reveal-btn" onclick="adminReveal()" class="hidden">Admin auflösen</button>
+
+            <div style="margin-top: 10px;">
+                <button id="tipp-btn-allgemein" onclick="holeTippVonKI('allgemein')">Allg. Tipp 🤖</button>
+                <button id="tipp-btn-interpret" onclick="holeTippVonKI('interpret')">Tipp zum Interpret 👤</button>
+                <button id="tipp-btn-titel" onclick="holeTippVonKI('titel')">Tipp zum Titel 🎵</button>
+
+                <button onclick="zeigeBuchstabe('interpret')" style="background-color: #ffc107; color: black; margin-top: 5px;">🔤 Interpret</button>
+                <button onclick="zeigeBuchstabe('titel')" style="background-color: #ffc107; color: black; margin-top: 5px;">🔤 Titel</button>
+            </div>
+            <div id="tipp-container" style="margin-top: 15px; text-align: left; background: #333; padding: 10px; border-radius: 5px; display: none;"></div>
+            
+            <p id="admin-debug"></p>
+
+            <div id="ui-debug-console" class="hidden" style="margin-top: 20px; background: #000; color: #0f0; font-family: monospace; padding: 10px; font-size: 12px; text-align: left; max-height: 150px; overflow-y: auto; border: 1px solid #444;">
+                <strong>Debug Console:</strong>
+                <div id="debug-log-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin-Modus Toggle ganz unten rechts -->
+    <div id="admin-mode-corner">
+        <label><input type="checkbox" id="admin-mode-toggle"> Admin-Modus</label>
+    </div>
+
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <script src="spotify.js"></script>
+    <script src="radar.js"></script>
+    <script src="script.js"></script>
+    <script src="lyrics-game.js"></script>
+    <script src="ki-tipps.js"></script>
+</body>
+</html>
