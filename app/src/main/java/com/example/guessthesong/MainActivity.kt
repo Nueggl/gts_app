@@ -194,6 +194,22 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    override fun onPause() {
+        super.onPause()
+        webView.onPause()
+        webView.pauseTimers()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webView.onResume()
+        webView.resumeTimers()
+        webView.evaluateJavascript(
+            "if (typeof reconnectSpotifyOnResume === 'function') { reconnectSpotifyOnResume(); }",
+            null
+        )
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         webView.saveState(outState)

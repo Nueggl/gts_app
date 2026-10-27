@@ -20,15 +20,14 @@ function generateRandomString(length) {
     return text;
 }
 
-// Reiner JS SHA-256 Fallback (falls window.crypto.subtle unter file:// im WebView nicht bereitsteht)
+// Reiner JS SHA-256 Fallback (falls window.crypto.subtle nicht bereitsteht)
 function sha256Fallback(ascii) {
     function rightRotate(value, amount) {
         return (value >>> amount) | (value << (32 - amount));
     }
     const mathPow = Math.pow;
     const maxWord = mathPow(2, 32);
-    let result = '';
-    const words = [];
+    let words = [];
     const asciiBitLength = ascii.length * 8;
     let hash = sha256Fallback.h = sha256Fallback.h || [];
     const k = sha256Fallback.k = sha256Fallback.k || [];
@@ -57,7 +56,6 @@ function sha256Fallback(ascii) {
         const oldHash = hash;
         hash = hash.slice(0, 8);
         for (let i = 0; i < 64; i++) {
-            const i2 = i + j;
             const w15 = w[i - 15], w2 = w[i - 2];
             const a = hash[0], e = hash[4];
             const temp1 = hash[7]
@@ -139,7 +137,7 @@ async function loginWithSpotify() {
     localStorage.setItem('code_verifier', codeVerifier);
 
     let codeChallenge = await generateCodeChallenge(codeVerifier);
-    let scope = 'streaming user-read-email user-read-private';
+    let scope = 'streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state';
     
     let args = new URLSearchParams({
         response_type: 'code',
@@ -244,19 +242,60 @@ if (cachedToken) {
     document.body.prepend(loginBtn);
 }
 
+// Überträgt das aktive Spotify-Playback wieder auf unseren WebView-Player (PUT /v1/me/player)
+function transferPlaybackToWebView(playNow = false) {
+    const activeToken = token || getValidToken();
+    if (!activeToken || !deviceId) return Promise.resolve(false);
+
+    return fetch('https://api.spotify.com/v1/me/player', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${activeToken}`
+        },
+        body: JSON.stringify({
+            device_ids: [deviceId],
+            play: playNow
+        })
+    })
+    .then(res => {
+        if (res.ok || res.status === 204) {
+            console.log("🔄 Spotify Playback erfolgreich auf WebView-Device übertragen:", deviceId);
+            return true;
+        }
+        console.warn("⚠️ Transfer Playback Status:", res.status);
+        return false;
+    })
+    .catch(err => {
+        console.warn("Fehler beim Playback-Transfer:", err);
+        return false;
+    });
+}
+
 // --- 4. SPOTIFY PLAYER BAUEN ---
 function initSpotifyPlayer() {
-    if (!token) return;
+    if (!token) token = getValidToken();
+    if (!token || !window.Spotify) return;
+
+    if (spotifyPlayer) {
+        try {
+            spotifyPlayer.disconnect();
+        } catch (e) {}
+    }
 
     spotifyPlayer = new Spotify.Player({
         name: 'Guess The Song Web Player',
-        getOAuthToken: cb => { cb(token); },
+        getOAuthToken: cb => {
+            const valid = getValidToken() || token;
+            cb(valid);
+        },
         volume: 0.5
     });
 
     spotifyPlayer.addListener('ready', ({ device_id }) => {
         console.log('✅ Spotify Player ist bereit! Device ID:', device_id);
         deviceId = device_id;
+        transferPlaybackToWebView(false);
     });
 
     spotifyPlayer.addListener('not_ready', ({ device_id }) => {
@@ -272,6 +311,49 @@ window.onSpotifyWebPlaybackSDKReady = () => {
         initSpotifyPlayer();
     }
 };
+
+// --- 4b. RECONNECT & VISIBILITYCHANGE (wenn man aus der echten Spotify-App zurückkehrt) ---
+function reconnectSpotifyOnResume() {
+    const validToken = getValidToken() || token;
+    if (!validToken) return;
+    token = validToken;
+
+    if (!spotifyPlayer) {
+        if (window.Spotify) {
+            initSpotifyPlayer();
+        }
+        return;
+    }
+
+    if (typeof spotifyPlayer.activateElement === 'function') {
+        spotifyPlayer.activateElement().catch(() => {});
+    }
+
+    spotifyPlayer.getCurrentState().then(state => {
+        if (!state) {
+            // Player ist nicht aktiv verbunden oder echte Spotify-App hat übernommen ->
+            // Verbindung auffrischen und Playback zurück auf unsere deviceId holen
+            console.log("🔄 Stelle Spotify Web Playback SDK nach App-Wechsel wieder her...");
+            spotifyPlayer.connect().then(connected => {
+                if (connected && deviceId) {
+                    transferPlaybackToWebView(false);
+                } else {
+                    initSpotifyPlayer();
+                }
+            });
+        } else if (deviceId) {
+            transferPlaybackToWebView(false);
+        }
+    }).catch(() => {
+        initSpotifyPlayer();
+    });
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        reconnectSpotifyOnResume();
+    }
+});
 
 // --- 5. FUNKTIONEN FÜRS SPIEL ---
 function spieleSong(spotifyUri, startSekunde) {
@@ -316,9 +398,8 @@ function spieleSong(spotifyUri, startSekunde) {
     });
 }
 
-// Hilfsfunktion: Übernimmt das Laden und Einblenden
-function starteNeuenSong(spotifyUri, startPunktMs) {
-    // WICHTIG: Die echte Spotify URL mit ${deviceId}
+// Hilfsfunktion: Übernimmt das Laden und Einblenden (inkl. Auto-Retry falls die echte Spotify-App aktiv war)
+function starteNeuenSong(spotifyUri, startPunktMs, isRetry = false) {
     fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         body: JSON.stringify({ 
@@ -329,9 +410,14 @@ function starteNeuenSong(spotifyUri, startPunktMs) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-    }).then(response => {
+    }).then(async response => {
         if (!response.ok) {
-            console.error("Spotify Play Fehler:", response.status);
+            console.warn("Spotify Play Fehler:", response.status);
+            // Falls die echte Spotify-App die Kontrolle gestohlen hat (404/403), Playback übertragen & 1x wiederholen
+            if (!isRetry) {
+                await transferPlaybackToWebView(false);
+                setTimeout(() => starteNeuenSong(spotifyUri, startPunktMs, true), 350);
+            }
             return;
         }
         

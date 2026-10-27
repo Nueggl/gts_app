@@ -387,6 +387,15 @@ function calculateFilteredSongs() {
     return result;
 }
 
+function scrollToTopClean() {
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+}
+
 function applyFiltersAndStart() {
     adminMode = document.getElementById('admin-mode-toggle').checked;
     const adminBtn = document.getElementById('admin-reveal-btn');
@@ -409,11 +418,14 @@ function applyFiltersAndStart() {
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('player-container').classList.remove('hidden');
     document.getElementById('game-controls').classList.remove('hidden');
+    scrollToTopClean();
     startGame();
 }
 
 function startGame() {
+    document.getElementById('admin-mode-corner').classList.add('hidden');
     if (filteredSongs.length === 0) return;
+    scrollToTopClean();
 
     // --- NEU: GEWICHTETE ZUFALLSAUSWAHL ---
     // 1. Songs nach Jahrzehnt sortieren
@@ -628,6 +640,7 @@ function goHome() {
     document.getElementById('player-container').classList.add('hidden');
     document.getElementById('game-controls').classList.add('hidden');
     document.getElementById('song-list-screen').classList.add('hidden');
+    document.getElementById('admin-mode-corner').classList.remove('hidden');
     uiLog("Zurück zum Menü.");
 }
 

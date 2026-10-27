@@ -17,6 +17,7 @@
         tools:targetApi="34">
         <activity
             android:name=".MainActivity"
+            android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
             android:exported="true">
             <intent-filter>

@@ -35,6 +35,37 @@
                 </div>
             </div>
 
+           <div class="settings-panel pop-panel">
+               <h2>Popularität der Songs</h2>
+               <div class="pop-sliders-container">
+                   <div class="vertical-slider-box" id="pop-abs-container" onclick="setPopFilterMode('absolute')">
+                       <label>Absolut</label>
+                       <div class="vertical-range-wrapper range-slider">
+                           <input type="range" id="pop-abs-min" min="1" max="100" value="1">
+                           <input type="range" id="pop-abs-max" min="1" max="100" value="100">
+                           <div class="slider-track"></div>
+                           <div class="slider-range" id="slider-range-abs"></div>
+                       </div>
+                       <div class="slider-values">
+                           <span id="pop-abs-min-val">1</span> - <span id="pop-abs-max-val">100</span>
+                       </div>
+                   </div>
+
+                   <div class="vertical-slider-box dimmed" id="pop-rel-container" onclick="setPopFilterMode('relative')">
+                       <label>Relativ (%)</label>
+                       <div class="vertical-range-wrapper range-slider">
+                           <input type="range" id="pop-rel-min" min="0" max="100" value="0">
+                           <input type="range" id="pop-rel-max" min="0" max="100" value="100">
+                           <div class="slider-track"></div>
+                           <div class="slider-range" id="slider-range-rel"></div>
+                       </div>
+                       <div class="slider-values">
+                           <span id="pop-rel-min-val">0%</span> - <span id="pop-rel-max-val">100%</span>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
         </div>
 
         <div class="settings-panel center-panel">
@@ -66,7 +97,15 @@
                 </div>
             </div>
 
-            <div class="filter-group">
+            <div class="settings-panel radar-panel">
+                <h2>Jahrzehnt-Verteilung</h2>
+                <div class="radar-container">
+                    <svg id="radar-svg" viewBox="0 0 400 400" style="width: 100%; max-width: 350px; overflow: visible;"></svg>
+                    <p id="radar-warning" class="hidden"></p>
+                </div>
+            </div>
+
+            <div class="filter-group" style="margin-top: 20px;">
                 <div id="genre-toggle-header" onclick="toggleGenreAccordion()" class="genre-accordion-header">
                     <div>
                         <span style="font-weight: bold; color: #ddd;">Genres</span>
@@ -85,45 +124,9 @@
         </div>
 
         <div class="right-side-column">
-            
-            <div class="settings-panel pop-panel">
-                <h2>Popularität der Songs</h2>
-                <div class="pop-sliders-container">
-                    <div class="vertical-slider-box" id="pop-abs-container" onclick="setPopFilterMode('absolute')">
-                        <label>Absolut</label>
-                        <div class="vertical-range-wrapper range-slider">
-                            <input type="range" id="pop-abs-min" min="1" max="100" value="1">
-                            <input type="range" id="pop-abs-max" min="1" max="100" value="100">
-                            <div class="slider-track"></div>
-                            <div class="slider-range" id="slider-range-abs"></div>
-                        </div>
-                        <div class="slider-values">
-                            <span id="pop-abs-min-val">1</span> - <span id="pop-abs-max-val">100</span>
-                        </div>
-                    </div>
 
-                    <div class="vertical-slider-box dimmed" id="pop-rel-container" onclick="setPopFilterMode('relative')">
-                        <label>Relativ (%)</label>
-                        <div class="vertical-range-wrapper range-slider">
-                            <input type="range" id="pop-rel-min" min="0" max="100" value="0">
-                            <input type="range" id="pop-rel-max" min="0" max="100" value="100">
-                            <div class="slider-track"></div>
-                            <div class="slider-range" id="slider-range-rel"></div>
-                        </div>
-                        <div class="slider-values">
-                            <span id="pop-rel-min-val">0%</span> - <span id="pop-rel-max-val">100%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="settings-panel radar-panel">
-                <h2>Jahrzehnt-Verteilung</h2>
-                <div class="radar-container">
-                    <svg id="radar-svg" viewBox="0 0 400 400" style="width: 100%; max-width: 350px; overflow: visible;"></svg>                    
-                    <p id="radar-warning" class="hidden"></p>
-                </div>
-            </div>
+
         </div>
 
     </div>

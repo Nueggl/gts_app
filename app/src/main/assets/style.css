@@ -1,43 +1,139 @@
-body { font-family: sans-serif; text-align: center; background: #222; color: white; }
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
+    font-family: sans-serif;
+    text-align: center;
+    background: #222;
+    color: white;
+    box-sizing: border-box;
+}
 
-/* Container für den Player und das Overlay */
+body {
+    padding: 10px 10px 20px 10px;
+}
+
+h1 {
+    margin: 12px 0 15px 0;
+    font-size: 1.8em;
+}
+
+/* Container für den Player und das Overlay (ohne schwarze Ränder & mobilfreundlich) */
 #player-container {
     position: relative;
-    width: 640px;
-    height: 360px;
-    margin: 20px auto;
-    background: #000;
+    width: 100%;
+    max-width: 640px;
+    height: auto;
+    margin: 10px auto;
+    background: transparent;
+    box-sizing: border-box;
 }
 
 /* Das eigentliche YouTube Video (wird von JS hier rein geladen) */
 #player { width: 100%; height: 100%; }
 
-/* Das Album Cover (Audio Modus) */
+/* Das Album Cover (Audio Modus) - ohne schwarze Seitenbalken */
 #cover-art {
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    max-height: 320px;
+    margin: 0 auto;
+    border-radius: 8px;
     object-fit: contain;
     display: block;
 }
 
-/* Der "Vorhang", der das Video verdeckt */
+/* Der "Vorhang", der das Cover verdeckt */
 #curtain {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: #333;
+    position: relative;
+    width: 100%;
+    height: auto;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 24px;
     z-index: 10; /* Muss über dem Player liegen */
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+#curtain-gif {
+    display: block;
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 320px;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 0.6; /* Macht das GIF etwas dunkler, damit man den Text gut lesen kann */
+    border-radius: 8px;
+}
+
+#curtain-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    z-index: 2;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 5px rgba(0,0,0,0.9); /* Starker Schatten für Lesbarkeit */
+    pointer-events: none;
 }
 
 .hidden { display: none !important; }
 
-input { padding: 10px; font-size: 16px; width: 300px; }
-button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff0055; color: white; border: none; }
-#status { margin: 20px; font-size: 1.2em; }
+input {
+    padding: 10px;
+    font-size: 16px;
+    width: 300px;
+    max-width: 90vw;
+    box-sizing: border-box;
+    margin: 4px;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background: #ff0055;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    margin: 3px;
+}
+
+#status {
+    margin: 12px 10px;
+    font-size: 1.15em;
+}
+
+#game-controls {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 5px 15px 5px;
+    box-sizing: border-box;
+}
+
+#guess-area {
+    margin: 0 auto;
+    padding-bottom: 10px;
+}
+
+#tipp-display-interpret:empty,
+#tipp-display-titel:empty,
+#lyrics-tipp-display-interpret:empty,
+#lyrics-tipp-display-titel:empty,
+#admin-debug:empty {
+    display: none !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+}
 
 /* --- Start Screen --- */
 /* --- DASHBOARD LAYOUT (3 Spalten) --- */
@@ -49,7 +145,7 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     background: transparent !important;
     padding: 0 !important;
     box-shadow: none !important;
-    max-width: 95%; /* Etwas breiter für 3 Spalten */
+    max-width: 95%;
     margin: 0 auto;
     flex-wrap: wrap; 
 }
@@ -59,15 +155,16 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     display: flex;
     flex-direction: column;
     gap: 20px;
-    flex: 1; /* Nehmen jeweils 1 Teil des Platzes ein */
-    min-width: 250px;
+    flex: 1;
+    min-width: min(100%, 250px);
     max-width: 350px; 
 }
 
 /* Mittlere Spalte (Hauptfilter) */
 .center-panel {
-    flex: 2; /* Nimmt doppelt so viel Platz ein wie die Seiten */
-    min-width: 400px;
+    flex: 2;
+    min-width: min(100%, 360px);
+    max-width: 100%;
     align-self: flex-start;
 }
 
@@ -87,7 +184,9 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
 }
 
 .playback-options label {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
     margin-bottom: 15px;
     cursor: pointer;
     text-align: left;
@@ -96,8 +195,12 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
 }
 
 .playback-options input[type="radio"] {
-    margin-right: 10px;
-    transform: scale(1.2); /* Macht den Punkt minimal größer */
+    margin: 0;
+    margin-right: 12px;
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: #0088ff;
 }
 
 #start-screen h2 {
@@ -307,56 +410,11 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     border: 1px solid #444;
     color: white;
     border-radius: 5px;
-}
-
-/* --- GIF Vorhang Design --- */
-#curtain {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden; /* Damit das GIF nicht über die runden Ecken ragt */
-    min-height: 250px; /* Oder wie groß deine Cover-Box auch immer ist */
-}
-
-#curtain-gif {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* Schneidet das GIF perfekt zu, ohne es zu stauchen */
-    z-index: 1;
-    opacity: 0.6; /* Macht das GIF etwas dunkler, damit man den Text gut lesen kann */
-}
-
-#curtain-text {
-    position: relative;
-    z-index: 2;
-    font-size: 1.5em;
-    font-weight: bold;
-    color: white;
-    text-shadow: 2px 2px 5px rgba(0,0,0,0.9); /* Starker Schatten für Lesbarkeit */
-}
-
-/* --- NEUES DASHBOARD LAYOUT (2 Boxen nebeneinander) --- */
-
-/* Der ursprüngliche start-screen wird zum unsichtbaren Wrapper */
-#start-screen {
-    display: flex;
-    justify-content: center;
-    align-items: stretch; /* Macht beide Boxen gleich hoch */
-    gap: 20px;
-    background: transparent !important; /* Überschreibt alte Hintergrundfarbe */
-    padding: 0 !important;
-    box-shadow: none !important;
-    max-width: 90%;
-    margin: 0 auto;
-    flex-wrap: wrap; /* Bricht auf Handys um */
+    box-sizing: border-box;
 }
 
 .pop-panel {
-    min-width: 250px;
+    min-width: min(100%, 250px);
     max-width: 500px;
     max-height: 400px;
     display: flex;
@@ -409,9 +467,6 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     margin-top: 85px;
     margin-bottom: 80px;
     touch-action: none;
-    
-    /* --- NEU: Der Breiten-Fix --- */
-    /* Sagt dem Browser: "Ignoriere den waagerechten Platz, den der Slider vor der Drehung gebraucht hat!" */
     margin-left: -75px; 
     margin-right: -75px; 
 }
@@ -464,32 +519,13 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     border: 1px solid rgba(255, 68, 68, 0.3);
 }
 
-.playback-options label {
-    display: flex;
-    align-items: center; /* Zentriert Punkt und Text vertikal auf einer Linie */
-    justify-content: flex-start; /* Zwingt alles nach links */
-    margin-bottom: 15px;
-    cursor: pointer;
-    font-size: 1.05em;
-    color: #ddd;
-}
-
-.playback-options input[type="radio"] {
-    margin: 0;
-    margin-right: 12px;
-    width: 22px;  /* Macht den Auswahlpunkt schön groß */
-    height: 22px;
-    cursor: pointer;
-    accent-color: #0088ff; /* Färbt den Punkt passend zu deinen Slidern blau (in modernen Browsern) */
-}
-
 /* ==========================================
    LYRICS MODE STYLING
    ========================================== */
 #lyrics-mode-screen {
     max-width: 680px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 15px;
     box-sizing: border-box;
 }
 
@@ -615,8 +651,9 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
 }
 
 #lyrics-cover-art {
+    max-width: 100%;
     width: 200px;
-    height: 200px;
+    height: auto;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     margin-bottom: 12px;
@@ -637,8 +674,8 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
 /* Admin-Modus Toggle ganz unten rechts */
 #admin-mode-corner {
     position: fixed;
-    bottom: 15px;
-    right: 15px;
+    bottom: 10px;
+    right: 10px;
     z-index: 1000;
     background: rgba(30, 30, 30, 0.85);
     border: 1px solid #444;
