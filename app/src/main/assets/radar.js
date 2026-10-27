@@ -72,7 +72,6 @@ function drawRadar() {
         text.setAttribute("alignment-baseline", "middle");
         
         // Relative Prozentzahl berechnen
-        // Relative Prozentzahl berechnen
         let total = radarValues.reduce((a, b) => a + b, 0);
         let percent = total === 0 ? 0 : Math.round((radarValues[i] / total) * 100);
         
@@ -136,32 +135,29 @@ function drawRadar() {
         hitbox.setAttribute("cy", cy);
         hitbox.setAttribute("r", 25); // Hier ist die Hitbox-Größe (z.B. 25-30px)
         hitbox.setAttribute("fill", "transparent");
-        hitbox.setAttribute("style", "cursor: grab; pointer-events: all;"); 
-        
-        // Drag Logic (Jetzt auf der Hitbox registriert)
-        hitbox.onmousedown = function(e) {
-            e.preventDefault();
-            
-            pt.x = e.clientX;
-            pt.y = e.clientY;
+        hitbox.setAttribute("style", "cursor: grab; pointer-events: all; touch-action: none;"); 
+
+        function startDrag(clientX, clientY) {
+            pt.x = clientX;
+            pt.y = clientY;
             let startP = pt.matrixTransform(svg.getScreenCTM().inverse());
             let startX = startP.x;
             let startY = startP.y;
 
-            let activeIndex = i; 
+            let activeIndex = i;
             let isPendingCenterDrag = (radarValues[i] === 0);
 
-            document.onmousemove = function(eMove) {
-                pt.x = eMove.clientX;
-                pt.y = eMove.clientY;
+            function moveDrag(moveClientX, moveClientY) {
+                pt.x = moveClientX;
+                pt.y = moveClientY;
                 let svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
                 let mouseX = svgP.x;
                 let mouseY = svgP.y;
-                
+
                 if (isPendingCenterDrag) {
                     let moveDx = mouseX - startX;
                     let moveDy = mouseY - startY;
-                    let distFromStart = Math.sqrt(moveDx*moveDx + moveDy*moveDy);
+                    let distFromStart = Math.sqrt(moveDx * moveDx + moveDy * moveDy);
 
                     if (distFromStart > 5) {
                         let dragAngle = Math.atan2(moveDy, moveDx);
@@ -184,32 +180,62 @@ function drawRadar() {
                         return;
                     }
                 }
-                
+
                 let dx = mouseX - center;
                 let dy = mouseY - center;
                 let currentAxisAngle = (Math.PI * 2 * activeIndex / 7) - (Math.PI / 2);
                 let axisX = Math.cos(currentAxisAngle);
                 let axisY = Math.sin(currentAxisAngle);
-                
+
                 let projectedDist = (dx * axisX) + (dy * axisY);
                 let newVal = Math.max(0, Math.min(100, (projectedDist / maxRadius) * 100));
-                
+
                 radarValues[activeIndex] = Math.round(newVal);
-                
+
                 syncToUI();
-                drawRadar(); 
-            };
-            
-            document.onmouseup = function() {
-                if (radarValues.reduce((a,b)=>a+b,0) === 0) {
-                    radarValues = [100,100,100,100,100,100,100];
+                drawRadar();
+            }
+
+            function endDrag() {
+                if (radarValues.reduce((a, b) => a + b, 0) === 0) {
+                    radarValues = [100, 100, 100, 100, 100, 100, 100];
                     syncToUI();
                     drawRadar();
                 }
                 document.onmousemove = null;
                 document.onmouseup = null;
+                document.ontouchmove = null;
+                document.ontouchend = null;
+            }
+
+            document.onmousemove = function(eMove) {
+                moveDrag(eMove.clientX, eMove.clientY);
             };
+            document.onmouseup = endDrag;
+
+            document.ontouchmove = function(eTouchMove) {
+                if (eTouchMove.touches && eTouchMove.touches.length > 0) {
+                    eTouchMove.preventDefault();
+                    moveDrag(eTouchMove.touches[0].clientX, eTouchMove.touches[0].clientY);
+                }
+            };
+            document.ontouchend = endDrag;
+        }
+
+        // Maus-Support
+        hitbox.onmousedown = function(e) {
+            e.preventDefault();
+            startDrag(e.clientX, e.clientY);
         };
+
+        // Touch-Support (Android WebView)
+        hitbox.ontouchstart = function(e) {
+            if (e.touches && e.touches.length > 0) {
+                e.preventDefault();
+                startDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        };
+
         svg.appendChild(hitbox);
     });
 
@@ -220,7 +246,9 @@ function drawRadar() {
 function syncToUI() {
     const checkboxes = document.querySelectorAll('#decade-filters input');
     radarValues.forEach((val, i) => {
-        checkboxes[i].checked = (val > 0);
+        if (checkboxes[i]) {
+            checkboxes[i].checked = (val > 0);
+        }
     });
 }
 
@@ -239,7 +267,7 @@ function updateFromCheckbox() {
     });
 
     // Sonderfall: Alle Checkboxen aus -> Alle an
-    if (allOff) {
+    if (allOff && checkboxes.length > 0) {
         checkboxes.forEach(cb => cb.checked = true);
         radarValues = [100, 100, 100, 100, 100, 100, 100];
     }
@@ -250,10 +278,14 @@ function updateFromCheckbox() {
 // Prüft den Konflikt mit dem Jahres-Slider
 function checkWarning() {
     const warningText = document.getElementById('radar-warning');
-    if(!warningText) return;
+    if (!warningText) return;
 
-    const minYear = parseInt(document.getElementById('year-min-val').innerText);
-    const maxYear = parseInt(document.getElementById('year-max-val').innerText);
+    const minYearEl = document.getElementById('year-min-val');
+    const maxYearEl = document.getElementById('year-max-val');
+    if (!minYearEl || !maxYearEl) return;
+
+    const minYear = parseInt(minYearEl.innerText);
+    const maxYear = parseInt(maxYearEl.innerText);
     
     let conflict = false;
     radarValues.forEach((val, i) => {
@@ -274,4 +306,13 @@ function checkWarning() {
     } else {
         warningText.classList.add('hidden');
     }
+}
+
+// Initialer Aufruf beim Start der App, damit das Radar sofort sichtbar ist
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        updateFromCheckbox();
+    });
+} else {
+    updateFromCheckbox();
 }

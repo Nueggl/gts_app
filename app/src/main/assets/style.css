@@ -202,6 +202,9 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     width: 100%;
     height: 30px;
     margin-top: 20px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .slider-track {
@@ -233,6 +236,7 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     appearance: none;
     background: none;
     pointer-events: none;
+    touch-action: none;
     z-index: 3;
     top: 0;
     margin: 0;
@@ -243,10 +247,11 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
 /* The thumb must be pointer-events: auto to be draggable */
 .range-slider input[type="range"]::-webkit-slider-thumb {
     pointer-events: auto;
+    touch-action: none;
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: #0088ff;
     cursor: pointer;
@@ -254,8 +259,9 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
 
 .range-slider input[type="range"]::-moz-range-thumb {
     pointer-events: auto;
-    width: 20px;
-    height: 20px;
+    touch-action: none;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: #0088ff;
     cursor: pointer;
@@ -381,6 +387,9 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.03);
     flex: 1;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .vertical-slider-box:hover {
@@ -399,6 +408,7 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     transform: rotate(-90deg);
     margin-top: 85px;
     margin-bottom: 80px;
+    touch-action: none;
     
     /* --- NEU: Der Breiten-Fix --- */
     /* Sagt dem Browser: "Ignoriere den waagerechten Platz, den der Slider vor der Drehung gebraucht hat!" */
@@ -411,10 +421,12 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     position: absolute;
     width: 100%;
     pointer-events: none;
+    touch-action: none;
 }
 
 .vertical-range-wrapper input[type="range"]::-webkit-slider-thumb {
     pointer-events: all;
+    touch-action: none;
 }
 
 /* Die Radar-Kachel etwas spezifischer stylen */
@@ -432,6 +444,12 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
     flex-direction: column;
     align-items: center;
     margin-top: 10px;
+}
+
+#radar-svg {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* Warnmeldung unter dem Radar */
@@ -649,4 +667,4 @@ button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #ff00
 #admin-mode-corner input[type="checkbox"] {
     cursor: pointer;
     width: auto;
-}
+}

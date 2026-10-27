@@ -8,9 +8,11 @@ let adminMode = false;
 let currentSort = { column: null, direction: 'asc' };
 const gifListe = ["gif1.gif", "gif2.gif", "gif3.gif", "gif4.gif", "gif5.gif", "gif6.gif", "gif7.gif", "gif8.gif"];
 
-
-let songliste = "song_list.json"
-
+// Im Android-WebView über den WebViewAssetLoader laden, im normalen Browser lokal als Fallback
+const isAndroidApp = (typeof Android !== 'undefined') || (window.location.hostname === 'appassets.androidplatform.net');
+let songliste = isAndroidApp
+    ? "https://appassets.androidplatform.net/assets/song_list.json"
+    : "song_list.json";
 
 function setTokenWithExpiry(token) {
     const now = new Date();
@@ -36,19 +38,32 @@ function getValidToken() {
     return item.token;
 }
 
-// Songs beim Start laden
+// Songs beim Start laden (mit Fallback auf relative Datei für Browser-Tests)
 async function loadSongs() {
     try {
-        const response = await fetch(songliste);
+        let response;
+        try {
+            response = await fetch(songliste);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+        } catch (firstErr) {
+            if (songliste !== "song_list.json") {
+                response = await fetch("song_list.json");
+            } else {
+                throw firstErr;
+            }
+        }
         songs = await response.json();
-        console.log('Songs geladen:', songs);
+        console.log('Songs geladen:', songs.length);
         setupFilters();
         const btn = document.getElementById('apply-filters-btn');
         btn.innerText = "Spiel starten";
         btn.disabled = false;
     } catch (error) {
         console.error('Fehler beim Laden:', error);
-        document.getElementById('status').innerHTML = "Fehler beim Laden der songs.json.";
+        const btn = document.getElementById('apply-filters-btn');
+        if (btn) btn.innerText = "Fehler beim Laden der Songs";
+        const statusEl = document.getElementById('status');
+        if (statusEl) statusEl.innerHTML = "Fehler beim Laden der song_list.json.";
     }
 }
 
@@ -136,7 +151,7 @@ function setPopFilterMode(mode) {
     }
 }
 
-// Hilfsfunktion: Verwaltet alle Doppel-Slider einheitlich
+// Hilfsfunktion: Verwaltet alle Doppel-Slider einheitlich (inkl. zuverlässigem Android-Touch-Support)
 function initDualSlider(minId, maxId, minValId, maxValId, trackRangeId, globalMin, globalMax, isPercent) {
     const minInput = document.getElementById(minId);
     const maxInput = document.getElementById(maxId);
@@ -144,8 +159,9 @@ function initDualSlider(minId, maxId, minValId, maxValId, trackRangeId, globalMi
     const maxVal = document.getElementById(maxValId);
     const sliderRange = document.getElementById(trackRangeId);
 
+    if (!minInput || !maxInput || !minVal || !maxVal || !sliderRange) return;
+
     // Initialwerte setzen
-    // IMMER die echten Datenbank-Werte erzwingen!
     minInput.min = globalMin;
     minInput.max = globalMax;
     minInput.value = globalMin;
@@ -168,22 +184,78 @@ function initDualSlider(minId, maxId, minValId, maxValId, trackRangeId, globalMi
         maxVal.innerText = max + (isPercent ? '%' : '');
         
         const range = globalMax - globalMin;
-        const leftPercent = ((min - globalMin) / range) * 100;
-        const rightPercent = ((globalMax - max) / range) * 100;
+        const leftPercent = range > 0 ? ((min - globalMin) / range) * 100 : 0;
+        const rightPercent = range > 0 ? ((globalMax - max) / range) * 100 : 0;
         sliderRange.style.left = leftPercent + '%';
         sliderRange.style.right = rightPercent + '%';
+
+        if (minId === 'year-min' && typeof checkWarning === 'function') {
+            checkWarning();
+        }
     }
 
-    minInput.addEventListener('input', update);
-    maxInput.addEventListener('input', update);
+    minInput.oninput = update;
+    maxInput.oninput = update;
+    minInput.onchange = update;
+    maxInput.onchange = update;
+
+    // Direkter Touch-Handler auf dem Slider-Container für Android WebView
+    // (da überlappende input[type="range"] mit pointer-events: none auf Touchscreens sonst schwer greifbar sind)
+    const wrapper = sliderRange.parentElement;
+    if (wrapper) {
+        let activeThumb = null;
+
+        function getValueFromTouch(touch) {
+            const rect = wrapper.getBoundingClientRect();
+            const isVertical = wrapper.classList.contains('vertical-range-wrapper');
+            let ratio;
+            if (isVertical) {
+                // Durch rotate(-90deg) ist unten = min (0%) und oben = max (100%)
+                ratio = 1 - ((touch.clientY - rect.top) / rect.height);
+            } else {
+                ratio = (touch.clientX - rect.left) / rect.width;
+            }
+            ratio = Math.max(0, Math.min(1, ratio));
+            return Math.round(globalMin + ratio * (globalMax - globalMin));
+        }
+
+        wrapper.ontouchstart = function(e) {
+            if (!e.touches || e.touches.length === 0) return;
+            e.preventDefault();
+            const val = getValueFromTouch(e.touches[0]);
+            const curMin = parseInt(minInput.value);
+            const curMax = parseInt(maxInput.value);
+
+            // Den Regler auswählen, der näher am Berührungspunkt liegt
+            if (Math.abs(val - curMin) <= Math.abs(val - curMax)) {
+                activeThumb = minInput;
+            } else {
+                activeThumb = maxInput;
+            }
+            activeThumb.value = val;
+            update();
+        };
+
+        wrapper.ontouchmove = function(e) {
+            if (!activeThumb || !e.touches || e.touches.length === 0) return;
+            e.preventDefault();
+            activeThumb.value = getValueFromTouch(e.touches[0]);
+            update();
+        };
+
+        wrapper.ontouchend = function() {
+            activeThumb = null;
+        };
+    }
+
     update();
 }
 
 function setupFilters() {
     // 1. Jahr-Slider initialisieren
     const years = songs.map(s => s.year).filter(y => y);
-    const minYear = Math.min(...years);
-    const maxYear = Math.max(...years);
+    const minYear = years.length > 0 ? Math.min(...years) : 1940;
+    const maxYear = years.length > 0 ? Math.max(...years) : 2030;
     initDualSlider('year-min', 'year-max', 'year-min-val', 'year-max-val', 'slider-range', minYear, maxYear, false);
 
     // 2. Popularitäts-Slider initialisieren
@@ -206,7 +278,9 @@ function setupFilters() {
     });
 
     // Initialisiere das Radar
-    drawRadar();
+    if (typeof drawRadar === 'function') {
+        drawRadar();
+    }
 }
 
 function toggleGenreAccordion() {
@@ -479,8 +553,7 @@ function cleanTitleString(str) {
         .replace(/\(.*?\)/g, '')   // Entfernt alles in ( )
         .replace(/\[.*?\]/g, '')   // Entfernt alles in [ ]
         .replace(/\s-.*$/, '')     // Entfernt " - " und alles danach
-        .trim()                    // Entfernt Leerzeichen am Rand
-        //.toLowerCase();
+        .trim();                   // Entfernt Leerzeichen am Rand
 }
 
 function checkArtistMatch(guessRaw, artistString) {
@@ -538,8 +611,6 @@ function reveal(updateStatus = true) {
         progressBar.style.transition = 'none';
     }
     
-    document.getElementById('curtain').classList.add('hidden');
-    //if (typeof stoppeSpotify === "function") stoppeSpotify();
     document.getElementById('curtain').classList.add('hidden');
     document.getElementById('cover-art').classList.remove('hidden');
     if (updateStatus) document.getElementById('status').innerText = `Lösung: ${currentSong.artist} - ${currentSong.title} (${currentSong.year}, ${currentSong.album})`;
@@ -625,9 +696,6 @@ function zeigeBuchstabe(typ) {
         }
     }
 
-    // Wir setzen Leerzeichen zwischen die Zeichen für bessere Lesbarkeit
-    // Ein echtes Leerzeichen im Wort machen wir zu drei Leerzeichen, 
-    // damit man die Wortgrenzen deutlich sieht.
     const displayString = masked.split('').map(char => char === ' ' ? ' \u00A0 ' : char).join(' ');
     
     document.getElementById(displayElementId).innerText = prefix + displayString;
@@ -650,7 +718,6 @@ document.getElementById('guess-artist').addEventListener('keypress', function (e
     }
 });
 
-// --- ENTER-TASTE FÜR NÄCHSTEN SONG ---
 // --- GLOBALE TASTEN-EVENTS (Enter & Shift+Enter) ---
 document.addEventListener('keydown', function (e) {
     // Nur aktiv, wenn das Audio-Hauptspiel auch wirklich sichtbar ist!
@@ -681,5 +748,23 @@ document.addEventListener('keydown', function (e) {
         }
     }
 });
+
+// Sofortige Initialisierung von Slidern und Radar beim Start (noch bevor die große JSON geladen ist)
+function initInitialUI() {
+    initDualSlider('year-min', 'year-max', 'year-min-val', 'year-max-val', 'slider-range', 1940, 2030, false);
+    initDualSlider('pop-abs-min', 'pop-abs-max', 'pop-abs-min-val', 'pop-abs-max-val', 'slider-range-abs', 1, 100, false);
+    initDualSlider('pop-rel-min', 'pop-rel-max', 'pop-rel-min-val', 'pop-rel-max-val', 'slider-range-rel', 0, 100, true);
+    if (typeof updateFromCheckbox === 'function') {
+        updateFromCheckbox();
+    } else if (typeof drawRadar === 'function') {
+        drawRadar();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initInitialUI);
+} else {
+    initInitialUI();
+}
 
 loadSongs();

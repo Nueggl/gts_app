@@ -9,11 +9,13 @@ import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
@@ -22,7 +24,8 @@ class MainActivity : AppCompatActivity() {
     private var pendingSpotifyCode: String? = null
 
     companion object {
-        private const val LOCAL_START_URL = "file:///android_asset/index.html"
+        // Virtuelle HTTPS-Domain für den WebViewAssetLoader (ermöglicht problemloses fetch() auf lokale Assets)
+        private const val LOCAL_START_URL = "https://appassets.androidplatform.net/assets/index.html"
         private const val REDIRECT_URI_PREFIX = "https://guessthesong.local"
     }
 
@@ -49,12 +52,19 @@ class MainActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webView)
 
-        // 1. CookieManager & Third-Party-Cookies für den Spotify-Login aktivieren
+        // 1. WebViewAssetLoader einrichten: bildet https://appassets.androidplatform.net/assets/...
+        // direkt auf den lokalen Android-Assets-Ordner (app/src/main/assets/) ab.
+        val assetLoader = WebViewAssetLoader.Builder()
+            .setDomain("appassets.androidplatform.net")
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
+        // 2. CookieManager & Third-Party-Cookies für den Spotify-Login aktivieren
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(webView, true)
 
-        // 2. WebView-Einstellungen konfigurieren
+        // 3. WebView-Einstellungen konfigurieren
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -63,13 +73,8 @@ class MainActivity : AppCompatActivity() {
             // Medien-Autoplay ohne Nutzer-Geste erlauben (wichtig für Spotify Web Playback SDK)
             mediaPlaybackRequiresUserGesture = false
 
-            // Lokalen Dateizugriff (z.B. für fetch("song_list.json") aus assets) erlauben
             allowFileAccess = true
             allowContentAccess = true
-            @Suppress("DEPRECATION")
-            allowFileAccessFromFileURLs = true
-            @Suppress("DEPRECATION")
-            allowUniversalAccessFromFileURLs = true
 
             loadWithOverviewMode = true
             useWideViewPort = true
@@ -77,11 +82,32 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
-        // 3. JavascriptInterface unter dem Namen "Android" bereitstellen
+        // 4. JavascriptInterface unter dem Namen "Android" bereitstellen
         webView.addJavascriptInterface(WebAppInterface(), "Android")
 
-        // 4. WebViewClient zum Abfangen der Redirect-URI https://guessthesong.local/
+        // 5. WebViewClient für Asset-Loading (fetch) und Spotify-Redirect-Abfangen
         webView.webViewClient = object : WebViewClient() {
+
+            // Fängt alle Anfragen an https://appassets.androidplatform.net/assets/... ab
+            // und liefert die lokalen Dateien (HTML, CSS, JS, JSON, GIFs) per Stream aus.
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): WebResourceResponse? {
+                val uri = request?.url ?: return null
+                return assetLoader.shouldInterceptRequest(uri)
+                    ?: super.shouldInterceptRequest(view, request)
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                url: String?
+            ): WebResourceResponse? {
+                val uri = url?.let { Uri.parse(it) } ?: return null
+                return assetLoader.shouldInterceptRequest(uri)
+                    ?: super.shouldInterceptRequest(view, url)
+            }
 
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
@@ -107,7 +133,7 @@ class MainActivity : AppCompatActivity() {
                         pendingSpotifyCode = code
                     }
 
-                    // Lokale App wieder laden, anstatt die fiktive URL (Fehlerseite) aufzurufen
+                    // Lokale App über die AssetLoader-URL wieder laden (verhindert Fehlerseite)
                     view?.loadUrl(LOCAL_START_URL)
                     return true
                 }
@@ -143,14 +169,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 5. WebChromeClient (erlaubt u.a. Protected Media / Widevine DRM für das Spotify Web Playback SDK)
+        // 6. WebChromeClient (erlaubt u.a. Protected Media / Widevine DRM für das Spotify Web Playback SDK)
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest?) {
                 request?.grant(request.resources)
             }
         }
 
-        // Startseite aus dem assets-Ordner laden
+        // Startseite über WebViewAssetLoader laden
         if (savedInstanceState == null) {
             webView.loadUrl(LOCAL_START_URL)
         }
